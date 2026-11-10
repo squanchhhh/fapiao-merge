@@ -13,9 +13,7 @@
 
 <https://squanchhhh.github.io/fapiao-merge/>
 
-在线版由仓库的 `gh-pages` 分支提供。维护者更新时执行 `npm run build`，把 `dist/index.html` 覆盖到 `gh-pages` 分支根目录的 `index.html`，并保留 `.nojekyll` 文件。
-
-如果想改用 GitHub Actions 自动部署，把 Pages 的 Source 改成 **GitHub Actions**，并确认仓库 **Settings → Actions → General** 里允许运行工作流。
+由 GitHub Actions 自动构建并部署：推送到 `main` 后，`deploy.yml` 会构建 `dist/index.html` 并发布。首次部署需要在 **Settings → Pages → Build and deployment** 里把 Source 设为 **GitHub Actions**。
 
 ### 离线单文件（推荐）
 
