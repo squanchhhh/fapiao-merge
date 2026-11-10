@@ -46,6 +46,65 @@ function hasPageContents(page: PDFPage): boolean {
 }
 
 /**
+ * 有些开票软件（如 Suwell/ULC）会在文件头写成
+ * `%%ULC:1.01.01 5 0 obj`：对象头和注释挤在同一行。
+ * 按 PDF 规范注释到行尾结束，pdf-lib 顺序扫描时会把整个对象头当成注释跳过，
+ * 于是该对象在内存里缺失（常见的是首页 Contents），embedPage 报
+ * “Can't embed page with missing Contents”，只能退回栅格化，
+ * 合并结果就失去文字层、变得模糊。
+ *
+ * 这里把对象头前的空白改成换行，并保持字节数不变，避免 xref 偏移失效。
+ */
+const COMMENT_JOINED_OBJECT = /(%[^\r\n]*?)([ \t]+)(\d+[ \t]+\d+[ \t]+obj\b)/g;
+
+function bytesToBinaryString(bytes: Uint8Array): string {
+  let result = '';
+  const chunk = 0x8000;
+  for (let index = 0; index < bytes.length; index += chunk) {
+    result += String.fromCharCode(...bytes.subarray(index, index + chunk));
+  }
+  return result;
+}
+
+function repairCommentJoinedObjects(bytes: Uint8Array): Uint8Array | null {
+  const text = bytesToBinaryString(bytes);
+  let changed = false;
+  const repaired = text.replace(
+    COMMENT_JOINED_OBJECT,
+    (_match, comment: string, space: string, header: string) => {
+      changed = true;
+      return `${comment}${' '.repeat(space.length - 1)}\n${header}`;
+    },
+  );
+  if (!changed) return null;
+
+  const output = new Uint8Array(repaired.length);
+  for (let index = 0; index < repaired.length; index += 1) {
+    output[index] = repaired.charCodeAt(index) & 0xff;
+  }
+  return output;
+}
+
+/** 页面声明了 Contents，但 pdf-lib 没解析出来，说明对象被扫描逻辑漏掉了。 */
+function hasUnresolvedContents(doc: PDFDocument): boolean {
+  return doc.getPages().some((page) => {
+    if (page.node.get(PDFName.of('Contents')) === undefined) return false;
+    return page.node.lookup(PDFName.of('Contents')) === undefined;
+  });
+}
+
+async function loadSourceDocument(source: ArrayBuffer | Uint8Array): Promise<PDFDocument> {
+  const bytes = source instanceof Uint8Array ? source : new Uint8Array(source);
+  const options = { ignoreEncryption: true, updateMetadata: false } as const;
+  const doc = await PDFDocument.load(bytes, options);
+  if (!hasUnresolvedContents(doc)) return doc;
+
+  const repaired = repairCommentJoinedObjects(bytes);
+  if (!repaired) return doc;
+  return PDFDocument.load(repaired, options);
+}
+
+/**
  * pdf-lib 的 embedPage() 只做登记，真正的写入推迟到 save()。
  * 如果某一页嵌入失败，必须把它从待写列表里移除，否则 save() 会再次抛错，
  * 导致整个合并失败，逐页兜底也就失效了。
@@ -149,10 +208,7 @@ export async function mergeInvoices(
         if (!doc) {
           const bytes = sources.get(ref.sourceId);
           if (!bytes) throw new Error('源文件已从内存中释放，请重新添加文件');
-          doc = await PDFDocument.load(bytes, {
-            ignoreEncryption: true,
-            updateMetadata: false,
-          });
+          doc = await loadSourceDocument(bytes);
           docCache.set(ref.sourceId, doc);
         }
         const sourcePage = doc.getPage(ref.pageIndex);

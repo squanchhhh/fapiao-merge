@@ -39,6 +39,23 @@ async function brokenContentsPdf(): Promise<Uint8Array> {
   return doc.save();
 }
 
+/**
+ * 模拟 Suwell/ULC 生成器：把 Contents 对象头写进上一行的 `%` 注释，
+ * pdf-lib 顺序扫描时会整行当作注释跳过，导致页面没有内容流。
+ */
+async function commentJoinedContentsPdf(): Promise<Uint8Array> {
+  const doc = await PDFDocument.create();
+  const page = doc.addPage([595.28, 396.65]);
+  page.drawText('COMMENT-JOINED-TEXT', { x: 40, y: 200, size: 18 });
+  const bytes = await doc.save();
+  const ref = page.node.get(PDFName.of('Contents')) as unknown as { objectNumber: number };
+
+  const text = Buffer.from(bytes).toString('latin1');
+  const marker = `\n${ref.objectNumber} 0 obj`;
+  const corrupted = text.replace(marker, ` %ULC:1.01.01 ${ref.objectNumber} 0 obj`);
+  return new Uint8Array(Buffer.from(corrupted, 'latin1'));
+}
+
 async function buildRefs(
   sources: Map<string, Uint8Array>,
 ): Promise<MergePageRef[]> {
@@ -108,6 +125,28 @@ async function buildRefs(
     const merged = await mergeInvoices(sources, refs, { layout: 'four-up', divider: true });
     const doc = await PDFDocument.load(merged);
     expect(doc.getPageCount()).toBe(1);
+  });
+
+  it('对象头写在注释行里的 PDF 仍能嵌入并保留文字层', async () => {
+    const sources = new Map<string, Uint8Array>([
+      ['comment-joined', await commentJoinedContentsPdf()],
+    ]);
+    const refs: MergePageRef[] = [
+      { sourceId: 'comment-joined', pageIndex: 0, rotation: 0, isA4: false },
+    ];
+
+    const merged = await mergeInvoices(sources, refs, { layout: 'original', divider: false });
+    const pages = await readPdfData(merged);
+    expect(pages[0].text).toContain('COMMENT-JOINED-TEXT');
+  });
+
+  it('Suwell 生成的 发票-10 合并后仍保留文字层', async () => {
+    const sources = new Map<string, Uint8Array>([['ulc', await sampleBytes('发票-10.pdf')]]);
+    const refs = await buildRefs(sources);
+
+    const merged = await mergeInvoices(sources, refs, { layout: 'two-up', divider: false });
+    const pages = await readPdfData(merged);
+    expect(pages[0].text).toContain('26447000002101297734');
   });
 
   it('缺少 Contents 的页面栅格化兜底，不影响同批其他发票', async () => {

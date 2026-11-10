@@ -1,7 +1,7 @@
 {
   "name": "fapiao-merge",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "在浏览器本地合并、识别、统计和打印电子发票，PDF 不上传",
   "license": "MIT",
   "homepage": "https://squanchhhh.github.io/fapiao-merge/",

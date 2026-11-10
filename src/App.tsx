@@ -397,7 +397,8 @@ export default function App() {
                 }
               }
               if (!buffer) throw new Error('源文件已释放，请重新添加');
-              return rasterizePageToPng(new Uint8Array(buffer), ref.pageIndex, 2);
+              // 兜底图片会替代原页面的文字层，用 4 倍（约 288dpi）保证打印不发虚。
+              return rasterizePageToPng(new Uint8Array(buffer), ref.pageIndex, 4);
             },
             undefined,
             (message) => warnings.push(message),
