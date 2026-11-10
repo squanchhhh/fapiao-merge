@@ -1,0 +1,22 @@
+# 依赖与构建产物
+node_modules
+dist/
+发票本地版.html
+coverage/
+*.tsbuildinfo
+
+# 真实发票样例：包含个人与单位信息，绝不入库
+fapiao_pdf/*.pdf
+!fapiao_pdf/README.md
+
+# 编辑器 / 系统
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# 本地环境变量与密钥
+.env
+.env.*
+!.env.example

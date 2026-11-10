@@ -1,0 +1,51 @@
+{
+  "name": "fapiao-merge",
+  "private": true,
+  "version": "1.0.0",
+  "description": "在浏览器本地合并、识别、统计和打印电子发票，PDF 不上传",
+  "license": "MIT",
+  "homepage": "https://squanchhhh.github.io/fapiao-merge/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/squanchhhh/fapiao-merge.git"
+  },
+  "keywords": [
+    "发票",
+    "电子发票",
+    "invoice",
+    "pdf",
+    "pdf-lib",
+    "pdfjs",
+    "offline",
+    "privacy",
+    "react",
+    "vite"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "gen:cmaps": "node scripts/gen-cmaps.mjs"
+  },
+  "dependencies": {
+    "pdf-lib": "1.17.1",
+    "pdfjs-dist": "4.8.69",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "^5.9.0",
+    "vite": "^7.1.0",
+    "vite-plugin-singlefile": "^2.3.0",
+    "vitest": "^3.2.0"
+  }
+}
